@@ -143,7 +143,7 @@ const Navbar: React.FC = () => {
                                                                 alt={packet.title}
                                                                 width={80}
                                                                 height={80}
-                                                                style={{ borderRadius: '8px', objectFit: 'cover', display: 'block', marginBottom: '8px', marginLeft: 'auto', marginRight: 'auto' }}
+                                                                style={{ borderRadius: '8px', objectFit: 'cover', display: 'block', marginBottom: '8px', width: 'auto', height: 'auto' , marginLeft: 'auto', marginRight: 'auto' }}
                                                             />
                                                         </Box>
                                                     ))}
