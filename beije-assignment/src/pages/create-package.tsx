@@ -11,11 +11,16 @@ import {
   IconButton,
   Collapse,
 } from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
+import { useSelector } from 'react-redux';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import CheckroomIcon from '@mui/icons-material/Checkroom';
+import LocalPharmacyIcon from '@mui/icons-material/LocalPharmacy';
+
+
 import axios from 'axios';
 
 import {
@@ -27,6 +32,42 @@ import {
 } from '../slices/productSlice';
 import { AppDispatch, RootState } from '../store/store';
 
+
+interface HardcodedSubProduct {
+  id: string;
+  name: string;
+  price: number;
+}
+
+const staticProducts: { [subLabel: string]: HardcodedSubProduct[] } = {
+  'beije ped': [
+    { id: 'bp1', name: 'Standart ped', price: 125 },
+    { id: 'bp2', name: 'Süper ped', price: 178 },
+    { id: 'bp3', name: 'Süper+ ped', price: 220 },
+  ],
+  'beije günlük ped': [
+    { id: 'bgp1', name: 'Günlük ped', price: 180 },
+    { id: 'bgp2', name: 'Süper Günlük ped', price: 220 },
+  ],
+  'beije tampon': [
+    { id: 'bt1', name: 'Mini tampon ped', price: 80 },
+    { id: 'bt2', name: 'Standart tampon ped', price: 90 },
+    { id: 'bt3', name: 'Süper tampon ped', price: 100 },
+  ],
+  'ısı bandı': [
+    { id: 'ib1', name: "2'li paket ısı bandı", price: 210 },
+    { id: 'ib2', name: "4'lü paket ısı bandı", price: 280 },
+  ],
+  'beijle cycle essentials': [
+    { id: 'ce1', name: 'beije Cycle Essentials', price: 500 },
+  ],
+};
+
+const hardcodedProductMap = Object.values(staticProducts).flat().reduce((acc, cur) => {
+  acc[cur.id] = cur;
+  return acc;
+}, {} as { [id: string]: HardcodedSubProduct });
+
 type ActiveCategory = 'Mastürel Ürünler' | 'Destekleyici Ürünler';
 
 interface SubCategory {
@@ -36,38 +77,37 @@ interface SubCategory {
 
 const CreatePackagePage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const categorizedProducts = useSelector<RootState, { [key: string]: Product[] }>(selectCategorizedProducts);
+  
+  const categorizedProducts = useSelector((state: RootState) => state.product.categorizedProducts);
   const loading = useSelector(selectProductLoading);
   const error = useSelector(selectProductError);
 
   const [activeCategory, setActiveCategory] = useState<ActiveCategory>('Mastürel Ürünler');
   const [expandedSubCategories, setExpandedSubCategories] = useState<{ [key: string]: boolean }>({});
-  const [selectedQuantities, setSelectedQuantities] = useState<{ [productId: string]: number }>({});
+  
+  const [selectedSubProducts, setSelectedSubProducts] = useState<{ [id: string]: number }>({});
   const [cartCount, setCartCount] = useState(0);
 
-  // Alt kategori tanımları
+  
   const menstrualSubcategories: SubCategory[] = [
-    { label: 'beije ped', filter: (title: string) => title.trim().toLowerCase().includes('beije ped') },
-    { label: 'beije günlük ped', filter: (title: string) => title.trim().toLowerCase().includes('günlük') },
-    { label: 'beije tampon', filter: (title: string) => title.trim().toLowerCase().includes('tampon') },
+    { label: 'beije ped', filter: () => true },
+    { label: 'beije günlük ped', filter: () => true },
+    { label: 'beije tampon', filter: () => true },
   ];
   const supportiveSubcategories: SubCategory[] = [
-    { label: 'ısı bandı', filter: (title: string) => title.trim().toLowerCase().includes('ısı bandı') },
-    { label: 'beijle cycle essentials', filter: (title: string) => title.trim().toLowerCase().includes('supplement') },
+    { label: 'ısı bandı', filter: () => true },
+    { label: 'beijle cycle essentials', filter: () => true },
   ];
 
   const subcategories = useMemo(() => {
     return activeCategory === 'Mastürel Ürünler' ? menstrualSubcategories : supportiveSubcategories;
   }, [activeCategory]);
 
-  // Mastürel için maksimum 3, Destekleyici için 2 ürün gösterilecek
-  const displayCount = activeCategory === 'Mastürel Ürünler' ? 3 : 2;
-
   useEffect(() => {
     dispatch(fetchProductsAndPackets());
   }, [dispatch]);
 
-  // Ana kategori değişince alt kategorilerin accordion durumunu initialize et (ilk açık, diğer kapalı)
+  
   useEffect(() => {
     const initialState: { [key: string]: boolean } = {};
     subcategories.forEach((sub, index) => {
@@ -87,40 +127,29 @@ const CreatePackagePage: React.FC = () => {
     }));
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
-    setSelectedQuantities((prev) => {
-      const current = prev[productId] || 0;
+  const updateSubProductQuantity = (subId: string, delta: number) => {
+    setSelectedSubProducts((prev) => {
+      const current = prev[subId] || 0;
       const newQuantity = current + delta;
-      return { ...prev, [productId]: newQuantity < 0 ? 0 : newQuantity };
+      return { ...prev, [subId]: newQuantity < 0 ? 0 : newQuantity };
     });
   };
 
   const totalPrice = () => {
     let total = 0;
-    Object.entries(selectedQuantities).forEach(([productId, quantity]) => {
-      let product: Product | undefined =
-        categorizedProducts['Menstrual']?.find((p) => p._id === productId) ||
-        categorizedProducts['Other']?.find((p) => p._id === productId);
-      if (product && product.subProducts && product.subProducts.length > 0) {
-        total += quantity * product.subProducts[0].price;
+    Object.entries(selectedSubProducts).forEach(([subId, qty]) => {
+      const prod = hardcodedProductMap[subId];
+      if (prod) {
+        total += qty * prod.price;
       }
     });
     return total;
   };
 
-  const getProductsForSubCategory = (sub: SubCategory) => {
-    const mainProducts =
-      activeCategory === 'Mastürel Ürünler'
-        ? categorizedProducts['Menstrual'] || []
-        : categorizedProducts['Other'] || [];
-    const filtered = mainProducts.filter((p) => sub.filter(p.title));
-    return filtered.slice(0, displayCount);
-  };
-
   const handleAddToCart = async () => {
-    const packet = Object.entries(selectedQuantities)
+    const packet = Object.entries(selectedSubProducts)
       .filter(([, quantity]) => quantity > 0)
-      .map(([productId, quantity]) => ({ _id: productId, count: quantity }));
+      .map(([subId, quantity]) => ({ _id: subId, count: quantity }));
     if (packet.length === 0) {
       console.log('Hiç ürün seçilmedi.');
       return;
@@ -131,7 +160,7 @@ const CreatePackagePage: React.FC = () => {
     };
     try {
       const response = await axios.post(
-        'https://3a631b5b-9b1b-4b7f-b736-00d1ce4a1505.mock.pstmn.io/verify-packet-price',
+        'https://3a631b5b-9b1b-4da5-b736-00d1ce4a1505.mock.pstmn.io/verify-packet-price',
         payload,
         {
           headers: {
@@ -140,7 +169,7 @@ const CreatePackagePage: React.FC = () => {
         }
       );
       if (response.data?.success) {
-        setSelectedQuantities({});
+        setSelectedSubProducts({});
         setCartCount((prev) => prev + 1);
         console.log('Sepete ekleme başarılı.');
       } else {
@@ -151,133 +180,132 @@ const CreatePackagePage: React.FC = () => {
     }
   };
 
+  
+  const getHardcodedProductsForSubCategory = (subLabel: string) => {
+    return staticProducts[subLabel] || [];
+  };
+
+  
+  const getIconForSubCategory = (subLabel: string) => {
+    if (activeCategory === 'Mastürel Ürünler') {
+      if (subLabel === 'beije ped' || subLabel === 'beije günlük ped') {
+        return <LocalOfferIcon fontSize="small" />;
+      } else if (subLabel === 'beije tampon') {
+        return <LocalPharmacyIcon fontSize="small" />;
+      }
+    } else {
+      if (subLabel === 'ısı bandı') {
+        return <CheckroomIcon fontSize="small" />;
+      } else if (subLabel === 'beijle cycle essentials') {
+        return <LocalPharmacyIcon fontSize="small" />;
+      }
+    }
+    return null;
+  };
+
   return (
-    <Box sx={{ backgroundColor: '#f8f8f8', minHeight: '100vh' }}>
+    <Box sx={{ backgroundColor: '#f8f8f8', minHeight: '80vh' }}>
       <CssBaseline />
-      <Container component="main" maxWidth="xl" sx={{ py: 4 }}>
+      <Container component="main" maxWidth="xl" sx={{ py: 2 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Kendi Paketini Oluştur
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Tercih ve ihtiyaçların doğrultusunda seçeceğin ürünlerden ve miktarlardan, sana özel bir paket oluşturalım.
+        </Typography>
+        
+        <Box display="flex" gap={2} sx={{ mb: 2, overflowX: 'auto',  marginLeft: '200px'}}>
+          <Box
+            sx={{
+              cursor: 'pointer',
+              borderBottom: activeCategory === 'Mastürel Ürünler' ? '2px solid black' : '2px solid transparent',
+              pb: 1,
+            }}
+            onClick={() => handleCategoryClick('Mastürel Ürünler')}
+          >
+            <Typography variant="h6">Mastürel Ürünler</Typography>
+          </Box>
+          <Box
+            sx={{
+              cursor: 'pointer',
+              borderBottom: activeCategory === 'Destekleyici Ürünler' ? '2px solid black' : '2px solid transparent',
+              pb: 1,
+            }}
+            onClick={() => handleCategoryClick('Destekleyici Ürünler')}
+          >
+            <Typography variant="h6">Destekleyici Ürünler</Typography>
+          </Box>
+        </Box>
         <Grid container spacing={4}>
-          {/* Sol Panel: Ürünler */}
-          <Grid item xs={12} md={8}>
-            <Typography variant="h5" component="h1" fontWeight="bold" gutterBottom>
-              Kendi Paketini Oluştur
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              Tercih ve ihtiyaçların doğrultusunda seçeceğin ürünlerden ve miktarlardan, sana özel bir paket oluşturalım.
-            </Typography>
-            {/* Ana kategori (üst tab) seçimi */}
-            <Box display="flex" justifyContent="center" mb={2}>
-              <Box
-                onClick={() => handleCategoryClick('Mastürel Ürünler')}
-                sx={{
-                  cursor: 'pointer',
-                  px: 3,
-                  py: 1,
-                  borderBottom: activeCategory === 'Mastürel Ürünler' ? '2px solid black' : '2px solid transparent',
-                }}
-              >
-                <Typography variant="h6">Mastürel Ürünler</Typography>
-              </Box>
-              <Box
-                onClick={() => handleCategoryClick('Destekleyici Ürünler')}
-                sx={{
-                  cursor: 'pointer',
-                  px: 3,
-                  py: 1,
-                  borderBottom: activeCategory === 'Destekleyici Ürünler' ? '2px solid black' : '2px solid transparent',
-                }}
-              >
-                <Typography variant="h6">Destekleyici Ürünler</Typography>
-              </Box>
-            </Box>
-            {/* Alt Kategori Listesi (Accordion şeklinde alt alta) */}
-            <Box mb={3}>
-              {subcategories.map((sub) => (
-                <Box key={sub.label} mb={2} border="1px solid #e0e0e0" borderRadius={1}>
-                  <Box
-                    onClick={() => toggleSubCategory(sub.label)}
+          
+          <Grid item xs={12} md={7}>
+            {subcategories.map((sub) => (
+              <Box key={sub.label} mb={3} border="1px solid #e0e0e0" borderRadius={2}>
+                <Box
+                  onClick={() => toggleSubCategory(sub.label)}
+                  sx={{
+                    cursor: 'pointer',
+                    p: 1,
+                    backgroundColor: '#fff',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderRadius:6,
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight="bold">
+                    {sub.label}
+                  </Typography>
+                  <ExpandMoreIcon
                     sx={{
-                      cursor: 'pointer',
-                      p: 1,
-                      backgroundColor: '#fff',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
+                      transform: expandedSubCategories[sub.label] ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.3s',
+                      fontSize: '1rem',
                     }}
-                  >
-                    <Typography variant="subtitle2" fontWeight="bold">
-                      {sub.label}
-                    </Typography>
-                    <ExpandMoreIcon
-                      sx={{
-                        transform: expandedSubCategories[sub.label] ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.3s',
-                        fontSize: '1rem',
-                      }}
-                    />
-                  </Box>
-                  <Collapse in={expandedSubCategories[sub.label]} timeout="auto" unmountOnExit>
-                    <Box p={1}>
-                      <Grid container spacing={1}>
-                        {loading ? (
-                          <Grid item xs={12}>
-                            <Typography align="center" variant="body2">
-                              Yükleniyor...
-                            </Typography>
-                          </Grid>
-                        ) : error ? (
-                          <Grid item xs={12}>
-                            <Typography align="center" color="error" variant="body2">
-                              {error}
-                            </Typography>
-                          </Grid>
-                        ) : (
-                          getProductsForSubCategory(sub).map((product) => (
-                            <Grid item xs={12} sm={6} md={4} key={product._id}>
-                              <Paper sx={{ p: 1, textAlign: 'center' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <LocalOfferIcon fontSize="small" />
-                                  <Typography variant="subtitle2" fontWeight="bold" sx={{ ml: 0.5 }}>
-                                    {product.title}
-                                  </Typography>
-                                </Box>
-                                <Box display="flex" alignItems="center" justifyContent="center" sx={{ mt: 0.5 }}>
-                                  <IconButton size="small" onClick={() => updateQuantity(product._id, -1)}>
-                                    <RemoveIcon fontSize="small" />
-                                  </IconButton>
-                                  <TextField
-                                    type="number"
-                                    value={selectedQuantities[product._id] || 0}
-                                    inputProps={{ min: 0, style: { textAlign: 'center', fontSize: '0.8rem' } }}
-                                    sx={{ width: 40, mx: 0.5 }}
-                                    onChange={(e) =>
-                                      setSelectedQuantities((prev) => ({
-                                        ...prev,
-                                        [product._id]: parseInt(e.target.value) || 0,
-                                      }))
-                                    }
-                                  />
-                                  <IconButton size="small" onClick={() => updateQuantity(product._id, 1)}>
-                                    <AddIcon fontSize="small" />
-                                  </IconButton>
-                                </Box>
-                                {product.subProducts && product.subProducts.length > 0 && (
-                                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                                    {product.subProducts[0].price} TL
-                                  </Typography>
-                                )}
-                              </Paper>
-                            </Grid>
-                          ))
-                        )}
-                      </Grid>
-                    </Box>
-                  </Collapse>
+                  />
                 </Box>
-              ))}
-            </Box>
+                <Collapse in={expandedSubCategories[sub.label]} timeout="auto" unmountOnExit>
+                  <Box p={1}>
+                    {/* Ürünler alt alta listelenecek */}
+                    {getHardcodedProductsForSubCategory(sub.label).map((prod) => (
+                      <Paper key={prod.id} sx={{ p: 1, mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {getIconForSubCategory(sub.label)}
+                          <Typography variant="subtitle2" fontWeight="bold">
+                            {prod.name}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => updateSubProductQuantity(prod.id, -1)}
+                            sx={{ borderRadius: '50%' }}
+                          >
+                            <RemoveIcon fontSize="small" />
+                          </IconButton>
+                          <Typography variant="body2" sx={{ minWidth: '24px', textAlign: 'center' }}>
+                            {selectedSubProducts[prod.id] || 0}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={() => updateSubProductQuantity(prod.id, 1)}
+                            sx={{ borderRadius: '50%' }}
+                          >
+                            <AddIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {prod.price} TL
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                </Collapse>
+              </Box>
+            ))}
           </Grid>
-          {/* Sağ Panel: Sepet Özeti (sadece isim, adet ve fiyat bilgisi) */}
-          <Grid item xs={12} md={4}>
+          {/* Sağ Panel: Sepet Özeti */}
+          <Grid item xs={12} md={5}>
             <Paper
               elevation={3}
               sx={{
@@ -293,31 +321,25 @@ const CreatePackagePage: React.FC = () => {
               <Typography variant="body2" sx={{ mb: 2 }}>
                 2 ayda bir gönderim
               </Typography>
-              {Object.keys(selectedQuantities).length === 0 ? (
+              {Object.keys(selectedSubProducts).length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  Herhangi bir ürün seçilmedi.
+                  Henüz ürün eklemediniz.
                 </Typography>
               ) : (
                 <Box mb={2}>
-                  {Object.entries(selectedQuantities)
-                    .filter(([, qty]) => qty > 0)
-                    .map(([prodId, qty]) => {
-                      let prod =
-                        categorizedProducts['Menstrual']?.find((p) => p._id === prodId) ||
-                        categorizedProducts['Other']?.find((p) => p._id === prodId);
-                      return prod ? (
-                        <Box key={prodId} display="flex" justifyContent="space-between">
-                          <Typography variant="body2">
-                            {prod.title} x {qty}
-                          </Typography>
-                          <Typography variant="body2">
-                            {prod.subProducts && prod.subProducts.length > 0
-                              ? (prod.subProducts[0].price * qty).toFixed(2)
-                              : '0'} TL
-                          </Typography>
-                        </Box>
-                      ) : null;
-                    })}
+                  {Object.entries(selectedSubProducts).map(([subId, qty]) => {
+                    const prod = hardcodedProductMap[subId];
+                    return prod ? (
+                      <Box key={subId} display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+                        <Typography variant="body2">
+                          {prod.name} x {qty}
+                        </Typography>
+                        <Typography variant="body2">
+                          {(prod.price * qty).toFixed(2)} TL
+                        </Typography>
+                      </Box>
+                    ) : null;
+                  })}
                 </Box>
               )}
               <Box display="flex" justifyContent="space-between" sx={{ mb: 2 }}>
