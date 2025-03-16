@@ -3,14 +3,7 @@
 ## İçindekiler
 - [Proje Tanımı](#proje-tanımı)
 - [Mimari ve Teknolojik Seçimler](#mimari-ve-teknolojik-seçimler)
-- [Proje Dizini Yapısı](#proje-dizini-yapısı)
-- [API Entegrasyonları](#api-entegrasyonları)
-- [State Yönetimi (Redux)](#state-yönetimi-redux)
-- [UI ve Animasyonlar](#ui-ve-animasyonlar)
-- [Ortam Değişkenleri ve Konfigürasyon](#ortam-değişkenleri-ve-konfigürasyon)
-- [Kurulum ve Çalıştırma](#kurulum-ve-çalıştırma)
-- [Testler ve Diğer İyileştirmeler](#testler-ve-diğer-iyileştirmeler)
-- [Git ve Sürüm Yönetimi](#git-ve-sürüm-yönetimi)
+
 
 ---
 
