@@ -23,9 +23,8 @@ export const loginUser = createAsyncThunk(
         email,
         password,
       });
-
       const { token, user } = response.data;
-      localStorage.setItem("token", token); 
+      localStorage.setItem("token", token);
       return { token, user };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Giriş başarısız.");
@@ -41,6 +40,9 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       localStorage.removeItem("token");
+    },
+    setProfile: (state, action) => {
+      state.user = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -61,5 +63,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, setProfile } = authSlice.actions;
 export default authSlice.reducer;

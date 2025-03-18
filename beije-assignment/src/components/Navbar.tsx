@@ -43,7 +43,7 @@ const Navbar: React.FC = () => {
                     <Button
                         onClick={() => router.push('/login')}
                         sx={{
-                            ml: 6,
+                            ml: 4,
                             color: "#ce7328"
                         }}
                     >
@@ -53,7 +53,7 @@ const Navbar: React.FC = () => {
 
                         <Button
                             color="inherit"
-                            sx={{ ml: 8 }}
+                            sx={{ ml: 4 }}
                             id="products-button"
                             aria-haspopup="true"
                         >

@@ -1,15 +1,15 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProductsAndPackets } from "../slices/productSlice"; // ✅ Doğru import
+import { fetchProductsAndPackets } from "../slices/productSlice";
 import { RootState, AppDispatch } from "../store/store";
 import { Typography, Card, CardMedia, CardContent } from "@mui/material";
 
 export default function ProductList() {
   const dispatch = useDispatch<AppDispatch>(); 
-  const products = useSelector((state: RootState) => state.product.products); // ✅ Doğru state yolu
+  const products = useSelector((state: RootState) => state.product.products); 
 
   useEffect(() => {
-    dispatch(fetchProductsAndPackets()); // ✅ Doğru fonksiyon çağrısı
+    dispatch(fetchProductsAndPackets()); 
   }, [dispatch]);
 
   return (
